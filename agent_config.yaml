@@ -1,0 +1,4 @@
+cli:
+  prog: agent-template
+  description: modular scaffold for building async, tool-using AI agents with memory, I/O, and runtime configuration
+  epilog: see README or docs/ for usage examples, architecture notes, and integration tips

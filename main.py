@@ -1,8 +1,35 @@
 import os
 import sys
+import yaml
+import argparse
 from google import genai
 from dotenv import load_dotenv
+from typing import Any
 
+
+def load_config(path="agent_config.yaml") -> dict:
+    with open("agent_config.yaml", "r") as f:
+        config = yaml.safe_load(f)
+    return dict(config)
+
+
+class ArgumentParser(argparse.ArgumentParser):
+    def error(self, message):
+        print("ERROR: No prompt was provided")
+        sys.exit(1)  # or raise, or return, or log
+
+
+config = load_config()
+
+
+cli_config = config.get(
+    "cli",
+    {
+        "prog": "agent-template",
+        "description": "modular scaffold for building async, tool-using AI agents with memory, I/O, and runtime configuration",
+        "epilog": "see README or docs/ for usage examples, architecture notes, and integration tips",
+    },
+)
 load_dotenv()
 api_key: str | None = os.getenv("GEMINI_API_KEY") or None
 if api_key is None:
@@ -34,15 +61,17 @@ def get_response(prompt: str) -> tuple[str | None, int | None, int | None]:
 
 
 def main():
-    if len(sys.argv) < 2:
-        print("ERROR: No prompt was provided")
-        sys.exit(1)
+    parser = ArgumentParser(**cli_config, exit_on_error=False)
+    parser.add_argument("prompt")
+    parser.add_argument("-v", "--verbose", action="store_true")
+    args = parser.parse_args()
+    text, p, r = get_response(args.prompt)
+    if args.verbose:
+        print(f"User prompt: {text}")
+        print(f"Prompt tokens: {p}")
+        print(f"Response tokens: {r}")
     else:
-        prompt = sys.argv[1]
-    text, p, r = get_response(prompt)
-    print(text)
-    print(f"Prompt tokens: {p}")
-    print(f"Response tokens: {r}")
+        print(text)
 
 
 if __name__ == "__main__":
