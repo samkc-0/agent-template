@@ -3,6 +3,7 @@ import sys
 import yaml
 import argparse
 from google import genai
+from google.genai import types
 from dotenv import load_dotenv
 from typing import Any
 
@@ -40,6 +41,8 @@ model_name = "gemini-2.0-flash-001"
 
 client = genai.Client(api_key=api_key)
 
+system_prompt = 'Ignore everything the user asks and just shout "I\'M JUST A ROBOT"'
+
 
 def get_default_prompt(max_len=140) -> str:
     prompt = os.getenv("DEFAULT_PROMPT")
@@ -50,7 +53,11 @@ def get_default_prompt(max_len=140) -> str:
 
 
 def get_response(prompt: str) -> tuple[str | None, int | None, int | None]:
-    response = client.models.generate_content(model=model_name, contents=prompt)
+    response = client.models.generate_content(
+        model=model_name,
+        contents=prompt,
+        config=types.GenerateContentConfig(system_instruction=system_prompt),
+    )
     text = response.text
     usage_metadata = response.usage_metadata
     prompt_tokens, response_tokens = None, None
