@@ -5,11 +5,11 @@ import argparse
 from google import genai
 from google.genai import types
 from dotenv import load_dotenv
-from typing import Any
+from functions.get_files_info import schema_get_files_info
 
 
 def load_config(path="agent_config.yaml") -> dict:
-    with open("agent_config.yaml", "r") as f:
+    with open(path, "r") as f:
         config = yaml.safe_load(f)
     return dict(config)
 
@@ -41,7 +41,21 @@ model_name = "gemini-2.0-flash-001"
 
 client = genai.Client(api_key=api_key)
 
-system_prompt = 'Ignore everything the user asks and just shout "I\'M JUST A ROBOT"'
+system_prompt = """
+You are a helpful AI coding agent.
+
+When a user asks a question or makes a request, make a function call plan. You can perform the following operations:
+
+- List files and directories
+
+All paths you provide should be relative to the working directory. You do not need to specify the working directory in your function calls as it is automatically injected for security reasons.
+"""
+
+available_functions = types.Tool(
+    function_declarations=[
+        schema_get_files_info,
+    ]
+)
 
 
 def get_default_prompt(max_len=140) -> str:
@@ -52,19 +66,22 @@ def get_default_prompt(max_len=140) -> str:
     return prompt[:n].strip()
 
 
-def get_response(prompt: str) -> tuple[str | None, int | None, int | None]:
+def get_response(prompt: str) -> tuple:
     response = client.models.generate_content(
         model=model_name,
         contents=prompt,
-        config=types.GenerateContentConfig(system_instruction=system_prompt),
+        config=types.GenerateContentConfig(
+            tools=[available_functions], system_instruction=system_prompt
+        ),
     )
     text = response.text
+    function_calls = response.function_calls
     usage_metadata = response.usage_metadata
     prompt_tokens, response_tokens = None, None
     if usage_metadata is not None:
         prompt_tokens = usage_metadata.prompt_token_count
         response_tokens = usage_metadata.candidates_token_count
-    return text, prompt_tokens, response_tokens
+    return text, function_calls, prompt_tokens, response_tokens
 
 
 def main():
