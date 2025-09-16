@@ -74,14 +74,17 @@ def get_response(prompt: str) -> tuple:
             tools=[available_functions], system_instruction=system_prompt
         ),
     )
-    text = response.text
-    function_calls = response.function_calls
+    if response.function_calls is not None:
+        fcs = response.function_calls
+        text = "\n".join(f"Calling function: {fc.name}({fc.args})" for fc in fcs)
+    else:
+        text = response.text
     usage_metadata = response.usage_metadata
     prompt_tokens, response_tokens = None, None
     if usage_metadata is not None:
         prompt_tokens = usage_metadata.prompt_token_count
         response_tokens = usage_metadata.candidates_token_count
-    return text, function_calls, prompt_tokens, response_tokens
+    return text, prompt_tokens, response_tokens
 
 
 def main():
