@@ -19,27 +19,15 @@ schema_run_python_file = types.FunctionDeclaration(
 )
 
 
-def _get_outside_directory_execution_error(directory: str) -> str:
-    return f'Error: Cannot execute "{directory}" as it is outside the permitted working directory'
-
-
-def _get_file_not_found_error(file_name: str) -> str:
-    return f'Error: File "{file_name}" not found.'
-
-
-def _get_not_python_file_error(file_name: str) -> str:
-    return f'Error: "{file_name}" is not a Python file.'
-
-
 def run_python_file(working_directory: Path | str, file_path: str) -> str:
     wd = Path(working_directory).resolve(strict=False)
     path = (wd / file_path).resolve(strict=False)
     if not path.is_relative_to(wd):
-        return _get_outside_directory_execution_error(file_path)
+        return f'Error: Cannot execute "{file_path}" as it is outside the permitted working directory'
     if not path.exists():
-        return _get_file_not_found_error(file_path)
-    if path.suffix != ".py":
-        return _get_not_python_file_error(file_path)
+        return f'Error: File "{file_path}" not found.'
+    if path.suffix != "py":
+        return f'Error: "{file_path}" is not a Python file.'
     capture = subprocess.run(
         ["python", file_path],
         cwd=wd,
