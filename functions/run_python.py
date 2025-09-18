@@ -2,6 +2,21 @@ from pathlib import Path
 import subprocess
 import os
 from .get_files_info import _get_outside_directory_error
+from google.genai import types
+
+schema_run_python_file = types.FunctionDeclaration(
+    name="run_python_file",
+    description="Runs a specified python script.",
+    parameters=types.Schema(
+        type=types.Type.OBJECT,
+        properties={
+            "file_path": types.Schema(
+                type=types.Type.STRING,
+                description="The file path of the script you want to run.",
+            ),
+        },
+    ),
+)
 
 
 def _get_outside_directory_execution_error(directory: str) -> str:

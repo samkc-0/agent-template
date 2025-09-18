@@ -18,6 +18,40 @@ schema_get_files_info = types.FunctionDeclaration(
 )
 
 
+schema_get_file_content = types.FunctionDeclaration(
+    name="get_file_content",
+    description="Gets the content of the file at the specified path, constrained to the working directory.",
+    parameters=types.Schema(
+        type=types.Type.OBJECT,
+        properties={
+            "file_path": types.Schema(
+                type=types.Type.STRING,
+                description="The file to read the content of, relative to the working directory",
+            ),
+        },
+    ),
+)
+
+
+schema_write_file = types.FunctionDeclaration(
+    name="write_file",
+    description="write content to the file at the specified path, constrained to the working directory.",
+    parameters=types.Schema(
+        type=types.Type.OBJECT,
+        properties={
+            "file_path": types.Schema(
+                type=types.Type.STRING,
+                description="The file to write to, relative to the working directory",
+            ),
+            "content": types.Schema(
+                type=types.Type.STRING,
+                description="The content to write to the file",
+            ),
+        },
+    ),
+)
+
+
 def _get_outside_directory_error(directory: str) -> str:
     return f'Error: Cannot list "{directory}" as it is outside the permitted working directory'
 
