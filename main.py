@@ -11,6 +11,7 @@ from functions.get_files_info import (
     schema_write_file,
 )
 from functions.run_python import schema_run_python_file
+from functions.call_function import call_function
 
 
 def load_config(path="agent_config.yaml") -> dict:
@@ -84,7 +85,10 @@ def get_response(prompt: str) -> tuple:
     )
     if response.function_calls is not None:
         fcs = response.function_calls
-        text = "\n".join(f"Calling function: {fc.name}({fc.args})" for fc in fcs)
+        content = call_function(fcs[0], verbose=True)
+        if content.parts is None or content.parts[0].function_response is None:
+            raise Exception(f"Failed to call function {fcs[0].name}")
+        text = content.parts[0].function_response
     else:
         text = response.text
     usage_metadata = response.usage_metadata
