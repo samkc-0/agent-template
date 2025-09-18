@@ -22,12 +22,13 @@ schema_run_python_file = types.FunctionDeclaration(
 def run_python_file(working_directory: Path | str, file_path: str) -> str:
     wd = Path(working_directory).resolve(strict=False)
     path = (wd / file_path).resolve(strict=False)
+
     if not path.is_relative_to(wd):
         return f'Error: Cannot execute "{file_path}" as it is outside the permitted working directory'
+
     if not path.exists():
         return f'Error: File "{file_path}" not found.'
-    if path.suffix != "py":
-        return f'Error: "{file_path}" is not a Python file.'
+
     capture = subprocess.run(
         ["python", file_path],
         cwd=wd,

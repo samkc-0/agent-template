@@ -28,8 +28,8 @@ def call_function(function_call_part, verbose=False):
     else:
         print(f" - calling function {function_call_part.name}")
     working_directory = "./calculator"
-    args = [working_directory, *function_call_part.args]
-    result = callable_functions[function_call_part.name](*args)
+    kwargs = {"working_directory": working_directory, **function_call_part.args}
+    result = callable_functions[function_call_part.name](**kwargs)
     return types.Content(
         role="tool",
         parts=[
