@@ -36,7 +36,12 @@ def run_python_file(working_directory: Path | str, file_path: str) -> str:
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
     )
-    output = f"STDOUT: {capture.stdout}\nSTDERR: {capture.stderr}\n"
+    output = ""
+    if capture.stdout:
+        output += f"STDOUT: {capture.stdout.decode('utf-8')}\n"
+    if capture.stderr:
+        output += f"\nSTDERR: {capture.stderr.decode()}\n"
+
     if capture.returncode != 0:
         output += f"Process exited with code {capture.returncode}\n"
     return output

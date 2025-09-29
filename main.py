@@ -4,6 +4,7 @@ import yaml
 import argparse
 from google import genai
 from google.genai import types
+from google.genai.errors import ServerError
 from dotenv import load_dotenv
 from functions.get_files_info import (
     schema_get_files_info,
@@ -76,19 +77,29 @@ def get_default_prompt(max_len=140) -> str:
 
 
 def get_response(prompt: str) -> tuple:
-    response = client.models.generate_content(
-        model=model_name,
-        contents=prompt,
-        config=types.GenerateContentConfig(
-            tools=[available_functions], system_instruction=system_prompt
-        ),
-    )
+    try:
+        response = client.models.generate_content(
+            model=model_name,
+            contents=prompt,
+            config=types.GenerateContentConfig(
+                tools=[available_functions], system_instruction=system_prompt
+            ),
+        )
+    except ServerError as e:
+        return f"{e.code}: {e.message}", None, None
     if response.function_calls is not None:
         fcs = response.function_calls
         content = call_function(fcs[0], verbose=True)
         if content.parts is None or content.parts[0].function_response is None:
             raise Exception(f"Failed to call function {fcs[0].name}")
-        text = content.parts[0].function_response
+        function_response = content.parts[0].function_response
+        res = function_response.response
+        if res is None:
+            raise Exception(
+                f"Failed to call function {fcs[0].name}. FunctionResponse.response is None."
+            )
+        text = str(res["result"])
+
     else:
         text = response.text
     usage_metadata = response.usage_metadata
@@ -104,11 +115,11 @@ def main():
     parser.add_argument("prompt")
     parser.add_argument("-v", "--verbose", action="store_true")
     args = parser.parse_args()
-    text, p, r = get_response(args.prompt)
+    text, prompt_tokens, response_tokens = get_response(args.prompt)
     if args.verbose:
         print(f"User prompt: {text}")
-        print(f"Prompt tokens: {p}")
-        print(f"Response tokens: {r}")
+        print(f"Prompt tokens: {prompt_tokens}")
+        print(f"Response tokens: {response_tokens}")
     else:
         print(text)
 
