@@ -1,6 +1,15 @@
-from .get_files_info import get_files_info, get_file_content, write_file
-from .run_python import run_python_file
 from google.genai import types
+from .get_files_info import get_files_info, schema_get_files_info
+from .get_file_content import get_file_content, schema_get_file_content
+from .write_file import write_file, schema_write_file
+from .run_python import run_python_file, schema_run_python_file
+
+available_schema = [
+    schema_run_python_file,
+    schema_get_files_info,
+    schema_get_file_content,
+    schema_write_file,
+]
 
 
 callable_functions = {

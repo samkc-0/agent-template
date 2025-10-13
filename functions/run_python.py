@@ -1,8 +1,8 @@
 from pathlib import Path
 import subprocess
-import os
-from .get_files_info import _get_outside_directory_error
+from .utils import outside_directory_error
 from google.genai import types
+
 
 schema_run_python_file = types.FunctionDeclaration(
     name="run_python_file",
@@ -24,7 +24,7 @@ def run_python_file(working_directory: Path | str, file_path: str) -> str:
     path = (wd / file_path).resolve(strict=False)
 
     if not path.is_relative_to(wd):
-        return f'Error: Cannot execute "{file_path}" as it is outside the permitted working directory'
+        return outside_directory_error(file_path)
 
     if not path.exists():
         return f'Error: File "{file_path}" not found.'
@@ -36,12 +36,16 @@ def run_python_file(working_directory: Path | str, file_path: str) -> str:
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
     )
+
     output = ""
+
     if capture.stdout:
         output += f"STDOUT: {capture.stdout.decode('utf-8')}\n"
+
     if capture.stderr:
         output += f"\nSTDERR: {capture.stderr.decode()}\n"
 
     if capture.returncode != 0:
         output += f"Process exited with code {capture.returncode}\n"
+
     return output

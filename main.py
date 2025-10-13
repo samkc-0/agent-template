@@ -1,127 +1,79 @@
 import os
 import sys
-import yaml
 import argparse
 from google import genai
 from google.genai import types
 from google.genai.errors import ServerError
 from dotenv import load_dotenv
-from functions.get_files_info import (
-    schema_get_files_info,
-    schema_get_file_content,
-    schema_write_file,
-)
-from functions.run_python import schema_run_python_file
-from functions.call_function import call_function
+from functions.get_file_content import get_file_content
+from functions.call_function import call_function, available_schema
+from config import SYSTEM_PROMPT, DEFAULT_PROMPT
 
 
-def load_config(path="agent_config.yaml") -> dict:
-    with open(path, "r") as f:
-        config = yaml.safe_load(f)
-    return dict(config)
-
-
-class ArgumentParser(argparse.ArgumentParser):
-    def error(self, message):
-        print("ERROR: No prompt was provided")
-        sys.exit(1)  # or raise, or return, or log
-
-
-config = load_config()
-
-
-cli_config = config.get(
-    "cli",
-    {
-        "prog": "agent-template",
-        "description": "modular scaffold for building async, tool-using AI agents with memory, I/O, and runtime configuration",
-        "epilog": "see README or docs/ for usage examples, architecture notes, and integration tips",
-    },
-)
 load_dotenv()
-api_key: str | None = os.getenv("GEMINI_API_KEY") or None
-if api_key is None:
-    print("ERROR: You need to add your GEMINI_API_KEY to .env")
-    sys.exit(1)
-
-model_name = "gemini-2.0-flash-001"
-
-client = genai.Client(api_key=api_key)
-
-system_prompt = """
-You are a helpful AI coding agent.
-
-When a user asks a question or makes a request, make a function call plan. You can perform the following operations:
-
-- List files and directories
-
-All paths you provide should be relative to the working directory. You do not need to specify the working directory in your function calls as it is automatically injected for security reasons.
-"""
-
-available_functions = types.Tool(
-    function_declarations=[
-        schema_get_files_info,
-        schema_get_file_content,
-        schema_write_file,
-        schema_run_python_file,
-    ]
-)
 
 
-def get_default_prompt(max_len=140) -> str:
-    prompt = os.getenv("DEFAULT_PROMPT")
-    if prompt is None:
-        raise ValueError("DEFAULT_PROMPT is not defined in .env")
-    n = min(max_len, len(prompt))
-    return prompt[:n].strip()
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
 
-def get_response(prompt: str) -> tuple:
+def get_model():
+    client = genai.Client(api_key=GEMINI_API_KEY)
+    return client
+
+
+def parse_args():
+    parser = argparse.ArgumentParser(prog="AGENT")
+
+    parser.add_argument(
+        "prompt", default=DEFAULT_PROMPT, help="intial prompt for the agent"
+    )
+
+    parser.add_argument(
+        "-v", "--verbose", default=False, action="store_true", help="verbose mode"
+    )
+
+    args = parser.parse_args()
+    user_prompt = args.prompt
+    verbose = args.verbose
+    return user_prompt, verbose
+
+
+def color_text(text: str, color: str) -> str:
+    return f"\033[{color}m{text}\033[0m"
+
+
+def generate_content(client, messages, verbose=False):
     try:
         response = client.models.generate_content(
-            model=model_name,
-            contents=prompt,
+            model="gemini-2.0-flash-001",
+            contents=messages,
             config=types.GenerateContentConfig(
-                tools=[available_functions], system_instruction=system_prompt
+                tools=[available_schema], system_instruction=SYSTEM_PROMPT
             ),
         )
-    except ServerError as e:
-        return f"{e.code}: {e.message}", None, None
-    if response.function_calls is not None:
-        fcs = response.function_calls
-        content = call_function(fcs[0], verbose=True)
-        if content.parts is None or content.parts[0].function_response is None:
-            raise Exception(f"Failed to call function {fcs[0].name}")
-        function_response = content.parts[0].function_response
-        res = function_response.response
-        if res is None:
-            raise Exception(
-                f"Failed to call function {fcs[0].name}. FunctionResponse.response is None."
-            )
-        text = str(res["result"])
 
-    else:
-        text = response.text
-    usage_metadata = response.usage_metadata
-    prompt_tokens, response_tokens = None, None
-    if usage_metadata is not None:
-        prompt_tokens = usage_metadata.prompt_token_count
-        response_tokens = usage_metadata.candidates_token_count
-    return text, prompt_tokens, response_tokens
+    except ServerError as e:
+        if verbose:
+            print(e)
+        return None
+
+    if verbose:
+        print(f"Prompt tokens: {response.usage_metadata.prompt_token_count}")
+        print(f"Response tokens: {response.usage_metadata.candidates_token_count}")
+
+    print(color_text(response.text, "33"))
+
+    for function_call_part in response.function_calls:
+        print(function_call_part)
 
 
 def main():
-    parser = ArgumentParser(**cli_config, exit_on_error=False)
-    parser.add_argument("prompt")
-    parser.add_argument("-v", "--verbose", action="store_true")
-    args = parser.parse_args()
-    text, prompt_tokens, response_tokens = get_response(args.prompt)
-    if args.verbose:
-        print(f"User prompt: {text}")
-        print(f"Prompt tokens: {prompt_tokens}")
-        print(f"Response tokens: {response_tokens}")
-    else:
-        print(text)
+    user_prompt, verbose = parse_args()
+    client = get_model()
+    messages = [
+        types.Content(role="user", parts=[types.Part(text=user_prompt)]),
+    ]
+    generate_content(client, messages, verbose)
 
 
 if __name__ == "__main__":
