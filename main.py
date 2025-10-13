@@ -8,6 +8,7 @@ from dotenv import load_dotenv
 from functions.get_file_content import get_file_content
 from functions.call_function import call_function, available_schema
 from config import SYSTEM_PROMPT, DEFAULT_PROMPT
+from functions.utils import color_printer
 
 
 load_dotenv()
@@ -38,10 +39,6 @@ def parse_args():
     return user_prompt, verbose
 
 
-def color_text(text: str, color: str) -> str:
-    return f"\033[{color}m{text}\033[0m"
-
-
 def generate_content(client, messages, verbose=False):
     try:
         response = client.models.generate_content(
@@ -61,51 +58,57 @@ def generate_content(client, messages, verbose=False):
         print(f"Prompt tokens: {response.usage_metadata.prompt_token_count}")
         print(f"Response tokens: {response.usage_metadata.candidates_token_count}")
 
-    if response.function_calls is None:
-        return response.text
+    if response.candidates is not None:
+        text = ""
+        for candidate in response.candidates:
+            if candidate.content is None:
+                continue
+            messages.append(candidate.content)
 
-    function_call_results = []
+    if response.function_calls is None:
+        return response
+    
     for f in response.function_calls:
         result = call_function(f, verbose)
         
         if not result.parts:
             raise Exception("no result from function call")
         
-        response = result.parts[0].function_response.response
-
-        if not response:
+        if not result.parts[0].function_response.response:
             raise Exception("no result from function call")
+
+        message = ""
+        for part in result.parts:
+            message = "\n".join(f"{key}: {value}" for key, value in part.function_response.response.items())
+            messages.append(types.Content(role="user", parts=[types.Part(text=message)]))
         
         if verbose:
-            message = "\n".join(f"{key}: {value}" for key, value in response.items())
-            return message
+            color_printer(33)(message)
 
-        function_call_results.append(result.parts[0])
-
-    return ""
+    return None
 
 
 def main():
+
+    yellow_text = color_printer(33)
+    red_text = color_printer(31)
+
     user_prompt, verbose = parse_args()
     client = get_model()
+
     messages = [
         types.Content(role="user", parts=[types.Part(text=user_prompt)]),
     ]
 
-    # while True:
-    #     message = generate_content(client, messages, verbose)
-        
-    #     messages.append(message)
-    #     print(color_text(message, "33"))
-        
-    #     prompt = input("> ")
-    #     if prompt == "exit":
-    #         sys.exit(0)
-        
-    #     messages.append(types.Content(role="user", parts=[types.Part(text=prompt)]))
-    message = generate_content(client, messages, verbose)
-    print(message)
-
+    for _ in range(20):
+        try:
+            response = generate_content(client, messages, verbose)
+            if response is not None:
+                yellow_text(response.text)
+                break
+        except Exception as e:
+            red_text(f"oops, something went wrong:\n{e}")
+            break
 
 if __name__ == "__main__":
     main()

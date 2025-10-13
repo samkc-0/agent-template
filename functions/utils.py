@@ -27,3 +27,13 @@ def pretty_format_files_info(path: Path) -> str:
 
 def truncate(contents: str, file_path: str) -> str:
     return f'{contents}[...File "{file_path}" truncated at 10000 characters"]'
+
+
+def colorize(text: str, color: str) -> str:
+    return f"\033[{color}m{text}\033[0m"
+
+
+def color_printer(color: str):
+    def _print(text: str):
+        print(colorize(text, color))
+    return _print

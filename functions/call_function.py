@@ -3,6 +3,7 @@ from .get_files_info import get_files_info, schema_get_files_info
 from .get_file_content import get_file_content, schema_get_file_content
 from .write_file import write_file, schema_write_file
 from .run_python import run_python_file, schema_run_python_file
+from .utils import color_printer
 
 available_schema = types.Tool(
     function_declarations=[
@@ -21,6 +22,7 @@ callable_functions = {
     "run_python_file": run_python_file,
 }
 
+magenta_text = color_printer(35)
 
 def call_function(function_call_part, verbose=False):
     if function_call_part.name not in callable_functions:
@@ -36,9 +38,9 @@ def call_function(function_call_part, verbose=False):
 
     if verbose:
         args = ", ".join(function_call_part.args)
-        print(f"calling function: {function_call_part.name}({args})")
+        magenta_text(f"calling function: {function_call_part.name}({args})")
     else:
-        print(f" - calling function {function_call_part.name}")
+        magenta_text(f" - calling function {function_call_part.name}")
     working_directory = "./calculator"
     kwargs = {"working_directory": working_directory, **function_call_part.args}
     result = callable_functions[function_call_part.name](**kwargs)
