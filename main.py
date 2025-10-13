@@ -61,10 +61,28 @@ def generate_content(client, messages, verbose=False):
         print(f"Prompt tokens: {response.usage_metadata.prompt_token_count}")
         print(f"Response tokens: {response.usage_metadata.candidates_token_count}")
 
-    print(color_text(response.text, "33"))
+    if response.function_calls is None:
+        return response.text
 
-    for function_call_part in response.function_calls:
-        print(function_call_part)
+    function_call_results = []
+    for f in response.function_calls:
+        result = call_function(f, verbose)
+        
+        if not result.parts:
+            raise Exception("no result from function call")
+        
+        response = result.parts[0].function_response.response
+
+        if not response:
+            raise Exception("no result from function call")
+        
+        if verbose:
+            message = "\n".join(f"{key}: {value}" for key, value in response.items())
+            return message
+
+        function_call_results.append(result.parts[0])
+
+    return ""
 
 
 def main():
@@ -73,7 +91,20 @@ def main():
     messages = [
         types.Content(role="user", parts=[types.Part(text=user_prompt)]),
     ]
-    generate_content(client, messages, verbose)
+
+    # while True:
+    #     message = generate_content(client, messages, verbose)
+        
+    #     messages.append(message)
+    #     print(color_text(message, "33"))
+        
+    #     prompt = input("> ")
+    #     if prompt == "exit":
+    #         sys.exit(0)
+        
+    #     messages.append(types.Content(role="user", parts=[types.Part(text=prompt)]))
+    message = generate_content(client, messages, verbose)
+    print(message)
 
 
 if __name__ == "__main__":

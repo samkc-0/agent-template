@@ -4,12 +4,14 @@ from .get_file_content import get_file_content, schema_get_file_content
 from .write_file import write_file, schema_write_file
 from .run_python import run_python_file, schema_run_python_file
 
-available_schema = [
-    schema_run_python_file,
-    schema_get_files_info,
-    schema_get_file_content,
-    schema_write_file,
-]
+available_schema = types.Tool(
+    function_declarations=[
+        schema_run_python_file,
+        schema_get_files_info,
+        schema_get_file_content,
+        schema_write_file,
+    ]
+)
 
 
 callable_functions = {
@@ -33,7 +35,8 @@ def call_function(function_call_part, verbose=False):
         )
 
     if verbose:
-        print(f"calling function: {function_call_part.name}({function_call_part.args})")
+        args = ", ".join(function_call_part.args)
+        print(f"calling function: {function_call_part.name}({args})")
     else:
         print(f" - calling function {function_call_part.name}")
     working_directory = "./calculator"
